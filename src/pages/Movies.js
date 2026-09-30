@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import InfiniteMediaList from "../components/InfiniteMediaList";
 import Genre from "../components/Genre";
 import useGenre from "../useGenre";
+import useGenreFilters from "../useGenreFilters";
 
 const Movies = () => {
   const [genre, setGenre] = useState([]); //used to store the origional genre values
-  const [value, setValue] = useState([]); //used to store the selected genre values
+  const [value, setValue] = useGenreFilters();
   const genreURL = useGenre(value);
 
   const endpoint = `/api/movies?with_genres=${encodeURIComponent(genreURL || "")}`;

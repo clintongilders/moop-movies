@@ -1,10 +1,11 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 
-function createApp({ token, fetchImpl = fetch, ...authOptions }) {
+function createApp({ token, fetchImpl = fetch, staticDir, ...authOptions }) {
   if (!token) throw new Error('TMDB_READ_ACCESS_TOKEN is required');
   const app = express();
   app.disable('x-powered-by');
+  app.get('/healthz', (req, res) => res.json({ status: 'ok' }));
   if (authOptions.trustProxy) app.set('trust proxy', authOptions.trustProxy);
   app.use('/api', rateLimit({ windowMs: 60000, limit: 120 }));
   require('./auth.cjs').installAuth(app, { token, fetchImpl, ...authOptions });
@@ -88,6 +89,16 @@ function createApp({ token, fetchImpl = fetch, ...authOptions }) {
     return proxy(req, res, path);
   });
   app.use('/api', (req, res) => res.status(404).json({ error: 'Unknown endpoint' }));
+  if (staticDir) {
+    const path = require('node:path');
+    if (!require('node:fs').existsSync(path.join(staticDir, 'index.html'))) throw new Error('Run npm run build before starting production');
+    app.use(express.static(staticDir));
+    app.get('*', (req, res) => res.sendFile(path.join(staticDir, 'index.html')));
+  }
+  app.use((error, req, res, next) => {
+    if (res.headersSent) return next(error);
+    res.status(error.type === 'entity.parse.failed' ? 400 : 503).json({ error: 'Request unavailable. Please try again.' });
+  });
   return app;
 }
 module.exports = { createApp };

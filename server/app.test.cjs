@@ -104,3 +104,28 @@ test('search validates and encodes queries, removes people, and checks Canadian 
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+test('production hosting serves SPA routes but preserves API 404s', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'moop-static-'));
+  fs.writeFileSync(path.join(dir, 'index.html'), '<html>MOOP test app</html>');
+  const app = createApp({ token: 'test', staticDir: dir });
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    for (const route of ['/', '/movie/42', '/account']) {
+      const response = await fetch(base + route);
+      assert.equal(response.status, 200);
+      assert.match(await response.text(), /MOOP test app/);
+    }
+    assert.equal((await fetch(base + '/api/missing')).status, 404);
+    assert.deepEqual(await (await fetch(base + '/healthz')).json(), { status: 'ok' });
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    fs.unlinkSync(path.join(dir, 'index.html'));
+    fs.rmdirSync(dir);
+  }
+});

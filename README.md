@@ -121,3 +121,9 @@ Signing out revokes the TMDB session. If TMDB cannot revoke it, the UI displays 
 error and keeps the session so the user can retry. Local session expiration does
 not itself revoke the remote TMDB authorization. Manage application access in
 TMDB account settings as needed. Auth/account responses are never publicly cached.
+
+## Render deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the Render Free + Upstash setup.
+Production now requires `REDIS_URL` and serves the React build through Express.
+The file-session instructions above apply only to local development.

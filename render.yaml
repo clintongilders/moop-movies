@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: moop-movies
+    runtime: node
+    branch: main
+    autoDeployTrigger: commit
+    plan: free
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run server
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: TRUST_PROXY_HOPS
+        value: 1
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: TMDB_READ_ACCESS_TOKEN
+        sync: false
+      - key: REDIS_URL
+        sync: false

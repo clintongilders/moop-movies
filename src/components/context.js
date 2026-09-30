@@ -8,7 +8,7 @@ const AppProvider = ({ children, media_type, id }) => {
 
   const fetchData = async () => {
     const Data = await fetch(
-      `https://api.themoviedb.org/3/${media_type}/${id}?api_key=3d820eab8fd533d2fd7e1514e86292ea&language=en-US`
+      `/api/tmdb/${media_type}/${id}?language=en-US`
     );
     const DataJ = await Data.json();
     // console.log(values);
@@ -17,7 +17,7 @@ const AppProvider = ({ children, media_type, id }) => {
 
   const fetchVideo = async () => {
     const ytvideo = await fetch(
-      `https://api.themoviedb.org/3/${media_type}/${id}/videos?api_key=3d820eab8fd533d2fd7e1514e86292ea&language=en-US`
+      `/api/tmdb/${media_type}/${id}/videos?language=en-US`
     );
     const YTvideo = await ytvideo.json();
     console.log(YTvideo.results[0]);

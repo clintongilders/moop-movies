@@ -25,12 +25,11 @@ export default function MyVerticallyCenteredModal(props) {
     useEffect(() => {
         if (!show) return;
         const fetchItemDetails = async () => {
-            const url = `https://api.themoviedb.org/3/${media_type}/${id}?language=en-US`;
+            const url = `/api/tmdb/${media_type}/${id}?language=en-US`;
             const options = {
                 method: 'GET',
                 headers: {
                     accept: 'application/json',
-                    Authorization: 'Bearer ' + process.env.REACT_APP_TMDB_API_RAT
                 }
             };
 
@@ -87,7 +86,7 @@ export default function MyVerticallyCenteredModal(props) {
                         </div>
                     </div>
                 </div>
-                <ProviderDetails movieId={id} />
+                <ProviderDetails movieId={id} mediaType={media_type} />
             </Modal.Body>
             <Modal.Footer>
 

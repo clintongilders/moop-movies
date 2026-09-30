@@ -1,17 +1,13 @@
-import React from 'react';
+import React from "react";
+import { Link } from "react-router-dom";
+import logo from "../assets/moop-movies.png";
 
-const Header = () => {
-    return (
-        <>
-            <div className="container-fluid">
-                <div className="row">
-                    <div className="d-flex justify-content-center align-items-center w-100 text-uppercase p-3 header">
-                        <i className="fas fa-video"></i> &nbsp;&nbsp;&nbsp; Moop: Movie & TV Show App
-                    </div>
-                </div>
-            </div>
-        </>
-    );
-};
+const Header = () => (
+  <header className="site-header">
+    <Link to="/" className="site-brand" aria-label="MOOP Movies — Trending home">
+      <img src={logo} alt="MOOP Movies" className="site-logo" width="156" height="104" />
+    </Link>
+  </header>
+);
 
 export default Header;

@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 
 const Footer = () => {
   const data = [
+    { icon: "fas fa-user", name: "Account", link: "/account" },
     {
       icon: "fas fa-fire-alt",
       name: "Trending",
@@ -18,11 +19,6 @@ const Footer = () => {
       name: "TV Series",
       link: "/tv",
     },
-    {
-      icon: "fas fa-search",
-      name: "Search",
-      link: "/search",
-    },
   ];
   return (
     <>
@@ -31,7 +27,7 @@ const Footer = () => {
           <div className="col-12 text-center bg-dark footer">
             {data.map((Val) => {
               return (
-                <>
+                <React.Fragment key={Val.link}>
                   <NavLink to={`${Val.link}`}>
                     <button className="col-sm-2 col-md-2 btn btn-dark">
                       <i className={`${Val.icon}`} id="fire"></i>
@@ -39,7 +35,7 @@ const Footer = () => {
                       <h5 className="pt-1 fs-6">{Val.name}</h5>
                     </button>
                   </NavLink>
-                </>
+                </React.Fragment>
               );
             })}
           </div>

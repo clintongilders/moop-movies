@@ -1,85 +1,74 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useId, useState } from "react";
 
 const Genre = ({ genre, setGenre, setPage, type, value, setValue }) => {
-  const fetchGenre = async () => {
-    const url = `https://api.themoviedb.org/3/genre/${type}/list?language=en-US`;
-    const options = {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-        Authorization: 'Bearer ' + process.env.REACT_APP_TMDB_API_RAT
-      }
-    };
-    const data = await fetch(
-      url, options
-    );
-    const { genres } = await data.json();
-    console.log(genres);
-    setGenre(genres);
-  };
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchGenre();
-  }, []);
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    async function load() {
+      try {
+        const response = await fetch(`/api/tmdb/genre/${type}/list?language=en-US`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Genre filters are unavailable right now.");
+        const data = await response.json();
+        if (!controller.signal.aborted) setGenre(data.genres ?? []);
+      } catch (error) {
+        if (!controller.signal.aborted) setError(error.message);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
+  }, [type, setGenre]);
 
-  //Adding a particular genre to the selected array
-  const CategoryAdd = (genres) => {
-    //first - select everything that's inside of values using the spread operator
-    //second - add those genres that are being sent from the non-selected arrays
-    setValue([...value, genres]);
-    //removing those genres from the non selected array that have been added to the selected array.
-    setGenre(genre.filter((g) => g.id !== genres.id));
-    setPage(1);
+  const toggleGenre = selected => {
+    setValue(previous => previous.some(item => item.id === selected.id)
+      ? previous.filter(item => item.id !== selected.id)
+      : [...previous, selected]);
+    setPage?.(1);
+  };
+  const clearGenres = () => {
+    setValue([]);
+    setPage?.(1);
   };
 
-  //removing a perticular genre from the selected array
-  const CategoryRemove = (genres) => {
-    setValue(value.filter((g) => g.id !== genres.id));
-    setGenre([...genre, genres]);
-    setPage(1);
-  };
   return (
-    <>
-      <div className="container-fluid">
-        <div className="row mb-3">
-          <div className="col-12 d-flex flex-wrap">
-            {value && //if value exist
-              value.map((Val) => {
-                const { id, name } = Val;
-                return (
-                  <>
-                    <div className="m-2" key={id}>
-                      <button
-                        className="bg-dark text-white px-4 py-2 text-center buttons"
-                        onClick={() => CategoryRemove(Val)}
-                      >
-                        {name}
-                      </button>
-                    </div>
-                  </>
-                );
-              })}
-
-            {genre && //if genre exist
-              genre.map((Gen) => {
-                const { id, name } = Gen;
-                return (
-                  <>
-                    <div className="m-2" key={id}>
-                      <button
-                        className="bg-dark text-white px-4 py-2 text-center button"
-                        onClick={() => CategoryAdd(Gen)}
-                      >
-                        {name}
-                      </button>
-                    </div>
-                  </>
-                );
-              })}
+    <section className="col-12 mb-4" aria-label="Filter by genre">
+      <div className={`genre-panel${expanded ? " is-expanded" : ""}`}>
+        <div className="genre-mobile-toolbar">
+          <button type="button" className="genre-toggle" aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded(previous => !previous)}>
+            <span>Genres <span className="genre-count">{value.length ? `${value.length} selected` : "All"}</span></span>
+            <span aria-hidden="true">{expanded ? "−" : "+"}</span>
+          </button>
+          {value.length > 0 && <button type="button" className="genre-clear" onClick={clearGenres}>Clear</button>}
+        </div>
+        <div className="genre-toolbar">
+          <div>
+            <h2 className="genre-heading">Explore by genre</h2>
+            <p className="genre-hint">{value.length ? `${value.length} selected · Matches any selected genre` : "Find something that fits your mood"}</p>
           </div>
+          {value.length > 0 && <button type="button" className="genre-clear" onClick={clearGenres}>Clear filters</button>}
+        </div>
+        {loading && <p role="status" className="genre-hint">Loading genres...</p>}
+        {error && <p role="alert">{error}</p>}
+        <div id={panelId} className="genre-chips">
+          {!loading && !error && <button type="button" className={`genre-chip${value.length === 0 ? " is-selected" : ""}`} aria-pressed={value.length === 0} onClick={clearGenres}>All genres</button>}
+          {genre.map(item => {
+            const selected = value.some(selection => selection.id === item.id);
+            return (
+              <button key={item.id} type="button" className={`genre-chip${selected ? " is-selected" : ""}`} aria-pressed={selected} onClick={() => toggleGenre(item)}>
+                {selected && <span aria-hidden="true">✓ </span>}{item.name}
+              </button>
+            );
+          })}
         </div>
       </div>
-    </>
+    </section>
   );
 };
 

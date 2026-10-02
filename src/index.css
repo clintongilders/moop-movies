@@ -69,7 +69,7 @@ a:hover {
 .movie-title {
   font-weight: 400;
   font-size: 1.5em;
-  line-height:normal;
+  line-height: normal;
 }
 .title-year {
   font-weight: 200;
@@ -96,7 +96,7 @@ a:hover {
 }
 
 .light-text {
-  color: rgba(255, 255, 255, 0.738)
+  color: rgba(255, 255, 255, 0.738);
 }
 
 .tagline {
@@ -129,7 +129,7 @@ a:hover {
     width: 100%;
   }
   .card-title {
-    font-size: 1em!important;
+    font-size: 1em !important;
   }
 
   .date .movie {
@@ -263,7 +263,9 @@ a:hover {
   color: #dce2ef;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 .genre-chip:hover {
   background: #313b50;
@@ -290,7 +292,9 @@ a:hover {
   outline-offset: 3px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .genre-chip { transition: none; }
+  .genre-chip {
+    transition: none;
+  }
 }
 
 @media (max-width: 767px) {
@@ -407,11 +411,18 @@ a:hover {
   object-fit: contain;
 }
 @media (max-width: 767px) {
-  .site-header { height: 80px; }
-  .site-logo { width: 120px; height: 80px; }
+  .site-header {
+    height: 80px;
+  }
+  .site-logo {
+    width: 120px;
+    height: 80px;
+  }
 }
 
-.media-card-shell { position: relative; }
+.media-card-shell {
+  position: relative;
+}
 .card-watchlist {
   position: absolute;
   top: 0.75rem;
@@ -428,10 +439,19 @@ a:hover {
   line-height: 1;
   box-shadow: 0 2px 8px #0008;
 }
-.card-watchlist:hover:not(:disabled) { background: #234780; }
-.card-watchlist:focus-visible { outline: 3px solid #b4cdff; outline-offset: 3px; }
-.card-watchlist.is-saved { background: #165c3e; }
-.card-watchlist:disabled:not(.is-saved) { opacity: 0.65; }
+.card-watchlist:hover:not(:disabled) {
+  background: #234780;
+}
+.card-watchlist:focus-visible {
+  outline: 3px solid #b4cdff;
+  outline-offset: 3px;
+}
+.card-watchlist.is-saved {
+  background: #165c3e;
+}
+.card-watchlist:disabled:not(.is-saved) {
+  opacity: 0.65;
+}
 .card-watchlist-error {
   position: absolute;
   top: 4rem;

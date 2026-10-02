@@ -20,8 +20,7 @@ Create an account at https://dashboard.render.com/ and connect GitHub. Choose
 **New → Blueprint**, select `clintongilders/moop-movies` and branch `main`.
 Render should detect `render.yaml` and a single **Free** web service.
 
-After setup, each push to `main` automatically triggers a deploy. No GitHub
-Actions workflow or deploy hook is required. The Blueprint runs
+After setup, pushes to `main` deploy after GitHub Actions checks pass (`autoDeployTrigger: checksPass`). For an existing service, apply the Blueprint change or select **After CI Checks Pass** in its deployment settings. The Blueprint runs
 `npm ci --include=dev && npm run build`, then starts the Express server with
 `npm run server`, which serves both the built frontend and API.
 
@@ -39,7 +38,7 @@ invalidates existing cookies and encrypted sessions.
 The service uses Render's `RENDER_EXTERNAL_URL` for the TMDB callback, so no
 manual URL setup is needed on the default onrender.com domain. For a custom
 domain, set `APP_ORIGIN=https://your-domain.example` to the exact public origin
-(without a path). Never put these server secrets in `REACT_APP_*` variables.
+(without a path). Never put these server secrets in `VITE_*` variables.
 
 Review the service's **Free** plan before creating the Blueprint. Do not add a
 paid disk or database. Free-tier quotas and idle startup delays still apply.
@@ -47,7 +46,7 @@ paid disk or database. Free-tier quotas and idle startup delays still apply.
 ## 3. Verify
 
 - Wait for a successful build and the service's **Live** status.
-- Open `/healthz` on its public URL; expect `{"status":"ok"}`.
+- Open `/healthz` on its public URL; expect HTTP 200 with `{"status":"ok","redis":"ready"}`.
 - Open Movies and TV and load a detail page; refresh its URL directly.
 - Open Account, sign in with TMDB, and approve access.
 - Add a title to your watchlist and confirm it appears in Account.

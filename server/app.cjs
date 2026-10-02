@@ -1,103 +1,130 @@
-const express = require('express');
-const { rateLimit } = require('express-rate-limit');
+const express = require("express");
+const { randomUUID } = require("node:crypto");
+const { createTmdbClient } = require("./tmdb.cjs");
+const { publicQuery } = require("./validation.cjs");
+const { availableTitles } = require("./providers.cjs");
+const { logError } = require("./log.cjs");
+const { rateLimit } = require("express-rate-limit");
 
 function createApp({ token, fetchImpl = fetch, staticDir, ...authOptions }) {
-  if (!token) throw new Error('TMDB_READ_ACCESS_TOKEN is required');
+  if (!token) throw new Error("TMDB_READ_ACCESS_TOKEN is required");
   const app = express();
-  app.disable('x-powered-by');
-  app.get('/healthz', (req, res) => res.json({ status: 'ok' }));
-  if (authOptions.trustProxy) app.set('trust proxy', authOptions.trustProxy);
-  app.use('/api', rateLimit({ windowMs: 60000, limit: 120 }));
-  require('./auth.cjs').installAuth(app, { token, fetchImpl, ...authOptions });
+  app.disable("x-powered-by");
+  const region = authOptions.region || "CA";
+  if (!/^[A-Z]{2}$/.test(region))
+    throw new Error("WATCH_REGION must be a two-letter uppercase country code");
+  const tmdb = createTmdbClient({ token, fetchImpl });
+  app.use((req, res, next) => {
+    req.requestId = randomUUID();
+    res.set("X-Request-ID", req.requestId);
+    next();
+  });
+  app.use(
+    require("helmet")({
+      contentSecurityPolicy: {
+        directives: {
+          "img-src": ["'self'", "data:", "https://image.tmdb.org"],
+          "frame-src": ["https://www.youtube-nocookie.com"],
+          "script-src": ["'self'"],
+          "upgrade-insecure-requests": authOptions.production ? [] : null,
+        },
+      },
+    }),
+  );
+  app.use(require("compression")());
+  app.get("/healthz", (req, res) => {
+    const ready = !authOptions.healthy || authOptions.healthy();
+    res.status(ready ? 200 : 503).json({
+      status: ready ? "ok" : "unavailable",
+      ...(authOptions.healthy
+        ? { redis: ready ? "ready" : "reconnecting" }
+        : {}),
+    });
+  });
+  if (authOptions.trustProxy) app.set("trust proxy", authOptions.trustProxy);
+  app.use("/api", rateLimit({ windowMs: 60000, limit: 120 }));
+  require("./auth.cjs").installAuth(app, { token, fetchImpl, ...authOptions });
 
-  async function proxy(req, res, path, discover = false) {
-    const search = path === 'search/multi';
-    const allowed = search ? ['page', 'query'] : discover ? ['page', 'with_genres'] : ['page', 'language'];
-    if (Object.keys(req.query).some(key => !allowed.includes(key))) {
-      return res.status(400).json({ error: 'Unsupported parameter' });
-    }
-    if (search && (typeof req.query.query !== 'string' || !req.query.query.trim() || req.query.query.length > 200)) {
-      return res.status(400).json({ error: 'Enter a search query between 1 and 200 characters' });
-    }
-    const page = req.query.page ?? '1';
-    const genres = req.query.with_genres ?? '';
-    if (typeof page !== 'string' || !/^[1-9]\d*$/.test(page) || Number(page) > 500 ||
-        typeof genres !== 'string' || genres.length > 200 ||
-        (genres && !/^\d+(?:[,|]\d+)*$/.test(genres)) ||
-        (req.query.language !== undefined && req.query.language !== 'en-US')) {
-      return res.status(400).json({ error: 'Invalid parameters' });
-    }
-    const params = new URLSearchParams({ language: 'en-US' });
-    if (discover || search || path.startsWith('trending/')) params.set('page', page);
-    if (search) {
-      params.set('query', req.query.query.trim());
-      params.set('include_adult', 'false');
-    }
-    if (discover) {
-      params.set('with_genres', genres);
-      params.set('watch_region', 'CA');
-      params.set('with_watch_monetization_types', 'flatrate|free|ads|rent|buy');
-      params.set('sort_by', 'popularity.desc');
-      params.set('include_adult', 'false');
-      if (path === 'discover/movie') params.set('include_video', 'false');
-    }
+  async function proxy(req, res, { path, kind = "resource" }) {
     try {
-      const upstream = await fetchImpl(`https://api.themoviedb.org/3/${path}?${params}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(10000),
+      const params = publicQuery({ query: req.query, path, kind, region });
+      const data = await tmdb.get(path, params, {
+        ttl: path.startsWith("genre/")
+          ? 86400000
+          : path.endsWith("/watch/providers")
+            ? 3600000
+            : 60000,
       });
-      if (!upstream.ok) return res.status(502).json({ error: 'Unable to load TMDB data' });
-      const data = await upstream.json();
-      if (search) data.results = (data.results ?? []).filter(item => ['movie', 'tv'].includes(item.media_type));
-      if (search || /^discover\/(movie|tv)$/.test(path) || /^trending\/(movie|tv|all)\/day$/.test(path)) {
-        const eligible = [];
-        // Bound concurrent provider lookups and preserve the original result order.
-        for (let index = 0; index < (data.results ?? []).length; index += 5) {
-          const batch = data.results.slice(index, index + 5);
-          const checks = await Promise.all(batch.map(async item => {
-            const mediaType = (search || path === 'trending/all/day') ? item.media_type : path.split('/')[1];
-            if (!['movie', 'tv'].includes(mediaType)) return true;
-            const response = await fetchImpl(`https://api.themoviedb.org/3/${mediaType}/${item.id}/watch/providers`, {
-              headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-              signal: AbortSignal.timeout(10000),
-            });
-            if (!response.ok) throw new Error('Provider availability lookup failed');
-            const canada = (await response.json()).results?.CA;
-            return ['flatrate', 'free', 'ads', 'rent', 'buy'].some(category =>
-              (canada?.[category] ?? []).some(provider =>
-                ![582, 2303, 2304].includes(provider.provider_id) &&
-                !/^paramount\s*(?:plus|\+)\s+apple\s+tv\s+channel$/i.test((provider.provider_name ?? '').trim())));
-          }));
-          eligible.push(...batch.filter((item, index) => checks[index]));
-        }
-        data.results = eligible;
-      }
-      res.set('Cache-Control', 'public, max-age=60').json(data);
-    } catch {
-      res.status(502).json({ error: 'Movie service unavailable' });
+      if (path.endsWith("/watch/providers")) data.region = region;
+      if (data["watch/providers"]) data["watch/providers"].region = region;
+      if (kind === "search")
+        data.results = (data.results ?? []).filter((item) =>
+          ["movie", "tv"].includes(item.media_type),
+        );
+      if (kind === "search" || path.startsWith("trending/"))
+        data.results = await availableTitles(data.results || [], {
+          tmdb,
+          region,
+          mediaType: path.split("/")[1],
+          requestId: req.requestId,
+        });
+      res.set("Cache-Control", "public, max-age=60").json(data);
+    } catch (error) {
+      logError(error, { requestId: req.requestId });
+      res.status(error.status || 502).json({
+        error:
+          error.status === 400
+            ? error.message
+            : error.status === 404
+              ? "Title not found"
+              : "Movie service unavailable",
+      });
     }
   }
 
-  app.get('/api/search', (req, res) => proxy(req, res, 'search/multi'));
-  app.get('/api/movies', (req, res) => proxy(req, res, 'discover/movie', true));
-  app.get('/api/tv', (req, res) => proxy(req, res, 'discover/tv', true));
+  app.get("/api/search", (req, res) =>
+    proxy(req, res, { path: "search/multi", kind: "search" }),
+  );
+  app.get("/api/movies", (req, res) =>
+    proxy(req, res, { path: "discover/movie", kind: "discover" }),
+  );
+  app.get("/api/tv", (req, res) =>
+    proxy(req, res, { path: "discover/tv", kind: "discover" }),
+  );
   // Only these read-only TMDB resources are reachable through the proxy.
   app.get(/^\/api\/tmdb\/(.+)$/, (req, res) => {
     const path = req.params[0];
-    const allowed = /^(?:genre\/(?:movie|tv)\/list|trending\/(?:movie|tv|all)\/day|(?:movie|tv)\/[1-9]\d*(?:\/videos|\/watch\/providers)?)$/;
-    if (!allowed.test(path)) return res.status(404).json({ error: 'Unknown endpoint' });
-    return proxy(req, res, path);
+    const allowed =
+      /^(?:genre\/(?:movie|tv)\/list|trending\/(?:movie|tv|all)\/day|(?:movie|tv)\/[1-9]\d*(?:\/videos|\/watch\/providers)?)$/;
+    if (!allowed.test(path))
+      return res.status(404).json({ error: "Unknown endpoint" });
+    return proxy(req, res, { path });
   });
-  app.use('/api', (req, res) => res.status(404).json({ error: 'Unknown endpoint' }));
+  app.use("/api", (req, res) =>
+    res.status(404).json({ error: "Unknown endpoint" }),
+  );
   if (staticDir) {
-    const path = require('node:path');
-    if (!require('node:fs').existsSync(path.join(staticDir, 'index.html'))) throw new Error('Run npm run build before starting production');
-    app.use(express.static(staticDir));
-    app.get('*', (req, res) => res.sendFile(path.join(staticDir, 'index.html')));
+    const path = require("node:path");
+    if (!require("node:fs").existsSync(path.join(staticDir, "index.html")))
+      throw new Error("Run npm run build before starting production");
+    app.use(
+      "/assets",
+      express.static(require("node:path").join(staticDir, "assets"), {
+        maxAge: "1y",
+        immutable: true,
+      }),
+    );
+    app.use(express.static(staticDir, { maxAge: 0 }));
+    app.get("*", (req, res) =>
+      res.sendFile(path.join(staticDir, "index.html")),
+    );
   }
   app.use((error, req, res, next) => {
+    logError(error, { requestId: req.requestId });
     if (res.headersSent) return next(error);
-    res.status(error.type === 'entity.parse.failed' ? 400 : 503).json({ error: 'Request unavailable. Please try again.' });
+    res
+      .status(error.type === "entity.parse.failed" ? 400 : 503)
+      .json({ error: "Request unavailable. Please try again." });
   });
   return app;
 }

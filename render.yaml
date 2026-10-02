@@ -3,7 +3,7 @@ services:
     name: moop-movies
     runtime: node
     branch: main
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
     plan: free
     region: oregon
     buildCommand: npm ci --include=dev && npm run build
@@ -13,7 +13,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: 22
+        value: 24
       - key: TRUST_PROXY_HOPS
         value: 1
       - key: SESSION_SECRET

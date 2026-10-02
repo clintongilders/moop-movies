@@ -9,6 +9,8 @@
 /coverage
 
 # production
+/dist
+# Ignore legacy CRA output from older local builds.
 /build
 
 # misc
@@ -24,3 +26,6 @@ yarn-error.log*
 
 # Private server-side account sessions
 .sessions/
+
+/test-results/
+/playwright-report/

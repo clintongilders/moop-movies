@@ -1,129 +1,194 @@
-# Getting Started with Create React App
+# MOOP Movies
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+MOOP Movies is a React and Express app for discovering movies and TV shows available in Canada. It uses TMDB for title information and account features, with watch-provider availability supplied by JustWatch through TMDB.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Browse today's trending movies or TV shows.
+- Explore movies and TV with genre filters and infinite scrolling. Genre selections are stored in the URL and preserved when returning from a detail page.
+- View title details, ratings, and Canadian streaming, free, ad-supported, rental, and purchase options.
+- Play available YouTube trailers in a modal, with an option to open them on YouTube.
+- Connect a TMDB account to manage movie and TV watchlists and favourites. Watchlist controls are available on cards; detail pages offer account actions.
 
-### `npm start`
+Browse results are filtered to titles with supported Canadian watch providers. Saved account lists are not availability-filtered. Provider links open service homepages or TMDB watch pages rather than provider-specific title pages.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Search code and an API endpoint exist, but the search screen is currently hidden: `/search` redirects to the home page.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Local development
 
-### `npm test`
+### Requirements
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js 22 or newer and npm.
+- A TMDB API Read Access Token.
+- A TMDB account if you want to use watchlists and favourites.
 
-### `npm run build`
+Redis is optional locally. Without it, the API stores encrypted sessions in the ignored `.sessions/` directory.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Setup
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+From the project directory:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```sh
+npm ci
+cp .env.example .env
+```
 
-### `npm run eject`
+If `.env` already exists, keep your existing settings instead of overwriting it. Edit `.env` and set:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```dotenv
+TMDB_READ_ACCESS_TOKEN=your_tmdb_read_access_token
+APP_ORIGIN=http://localhost:3000
+SESSION_SECRET=your_random_secret_at_least_32_characters
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Use the TMDB **API Read Access Token**, not the short API key. Generate a session secret with:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Copy the generated value into `SESSION_SECRET`. Keep it stable across restarts to preserve sessions.
 
-## Learn More
+### Start both services
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```sh
+npm run dev
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Open [http://localhost:3000](http://localhost:3000). The React development server forwards `/api` requests to Express on port **3001**.
 
-### Code Splitting
+The launcher checks that ports **3000** and **3001** are available before starting either service. Press **Ctrl+C** to stop both. If either service exits, the launcher stops the other automatically.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+React reloads when frontend files change. Restart `npm run dev` after changing backend code or environment settings; the backend does not run in watch mode.
 
-### Analyzing the Bundle Size
+To start the services separately, run `npm run server` and `npm start` in separate terminals.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Commands
 
-### Making a Progressive Web App
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the API and React development server together. |
+| `npm start` | Start only the React development server. |
+| `npm run server` | Start Express; also serve `build/` when `NODE_ENV=production`. |
+| `npm test` | Run frontend tests in interactive watch mode. |
+| `npm test -- --watchAll=false` | Run frontend tests once. |
+| `npm run test:server` | Run backend tests with Node's test runner. |
+| `npm run build` | Generate the production frontend in `build/`. |
+| `npm run eject` | Eject Create React App configuration; this is irreversible. |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Environment variables
 
-### Advanced Configuration
+The API reads `.env` from the project root. Hosting platforms can provide these values through their environment instead.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+| Variable | Purpose |
+| --- | --- |
+| `TMDB_READ_ACCESS_TOKEN` | Required. Server-side TMDB API Read Access Token. |
+| `SESSION_SECRET` | Required. Random secret of at least 32 characters, used for cookies and session encryption. |
+| `APP_ORIGIN` | Browser-facing origin without a path. Use `http://localhost:3000` locally and an HTTPS origin in production. |
+| `REDIS_URL` | Optional locally; required in production. TLS Redis TCP URL starting with `rediss://`, not an Upstash REST URL or token. |
+| `SESSION_DIR` | Optional local file-session directory; defaults to `.sessions/`. Used when Redis is unset. |
+| `TRUST_PROXY_HOPS` | Trusted reverse-proxy hop count. Leave unset locally; the Render Blueprint sets it to `1`. |
+| `NODE_ENV` | Set to `production` for deployment. The combined development launcher sets it to `development`. |
+| `PORT` | Express listen port, default `3001`. Keep the default for the development launcher and frontend proxy. |
+| `RENDER_EXTERNAL_URL` | Render-provided fallback for `APP_ORIGIN`. Set `APP_ORIGIN` explicitly for a custom domain. |
 
-### Deployment
+Keep `.env`, `.sessions/`, and real credentials out of Git. Never prefix server secrets with `REACT_APP_`: Create React App embeds those variables in browser builds. If credentials have been published, revoke or rotate them; deleting them from source does not remove them from Git history or previous builds.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-# moop-movies
-
-## Local API setup
-
-Use Node.js 22 or newer. Install dependencies with `npm install`.
-Copy `.env.example` to `.env` if you do not already have a local `.env`, then set
-`TMDB_READ_ACCESS_TOKEN` to your TMDB API Read Access Token. Never prefix this
-secret with `REACT_APP_`; those variables are embedded in browser builds.
-
-Run `npm run server` and `npm start` in separate terminals. Restart the React
-server after changing the proxy configuration. React forwards `/api` requests
-to port 3001 during development. Run backend checks with `npm run test:server`.
-
-For production, deploy the Node API with `npm run server`, configure its token
-in the host's environment, and route `/api/*` on the frontend domain to it.
-The Create React App development proxy is not part of the production build.
-The API permits only the TMDB read endpoints used by this application, validates
-parameters, times out upstream calls, and limits each IP to 120 requests/minute.
-If deploying behind a reverse proxy, configure Express trust proxy for your
-specific hosting topology before relying on per-client rate limits. The default
-in-memory limiter is per process; use a shared store when scaling instances.
-Successful responses may be cached for 60 seconds.
-
-Replace previously published credentials in TMDB and redeploy; removing keys
-from source does not revoke keys in Git history or earlier browser bundles.
+If you set `REDIS_URL` locally, use a separate development database from production.
 
 ## TMDB accounts
 
-Open **Account** in the bottom navigation, then **Sign in with TMDB**. Approve
-access on TMDB to return to your account. The account screen displays movie/TV
-watchlists and favourites; detail pages include add/remove buttons. Saved lists
-are not filtered by Canadian availability, so saved titles remain visible.
+Open **Account**, choose **Sign in with TMDB**, and approve access on TMDB. Passwords are entered on TMDB, not in this app. The browser returns through `/api/auth/callback` on `APP_ORIGIN`.
 
-Set `APP_ORIGIN` to the browser-facing origin (development:
-`http://localhost:3000`) and `SESSION_SECRET` to a random secret of at least 32
-characters. A secret has been generated in the local ignored `.env` during setup.
-The callback is `/api/auth/callback` on that origin; production must route it to
-Node, alongside the other `/api/*` paths. Authentication uses the existing TMDB
-read access token; passwords are entered only on TMDB.
+Account sessions last 24 hours. Local sessions use encrypted file storage; Redis sessions use AES-256-GCM encryption. Watchlists and favourites remain stored on TMDB.
 
-Sessions expire after 24 hours and are encrypted in `.sessions/` using the server
-secret. Keep this directory private and persistent; never serve it as static
-content or commit it. `SESSION_DIR` can select a persistent volume. This file
-store is intended for one Node server; use a shared session store when scaling
-across servers. Keep `SESSION_SECRET` stable across restarts. Set `NODE_ENV=production`
-and an HTTPS `APP_ORIGIN` for secure cookies. Behind a trusted reverse proxy,
-set `TRUST_PROXY_HOPS` to the actual trusted hop count (usually 1); do not enable
-this if clients can bypass that proxy. Use HTTPS for both the site and API.
+Signing out revokes the TMDB session. If revocation fails, the app keeps the session and shows an error so you can retry. Local session expiration does not revoke remote TMDB access; you can manage application access through your TMDB account.
 
-Signing out revokes the TMDB session. If TMDB cannot revoke it, the UI displays an
-error and keeps the session so the user can retry. Local session expiration does
-not itself revoke the remote TMDB authorization. Manage application access in
-TMDB account settings as needed. Auth/account responses are never publicly cached.
+## Architecture
 
-## Render deployment
+The frontend uses React 19, React Router, Bootstrap, and Create React App. The Express API keeps credentials server-side, validates TMDB requests, and manages cookie-based account sessions.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the Render Free + Upstash setup.
-Production now requires `REDIS_URL` and serves the React build through Express.
-The file-session instructions above apply only to local development.
+```text
+src/
+  components/       Shared UI, authentication context, trailers, and providers
+  pages/            Trending, Movies, TV, title details, and Account
+  useGenreFilters.js URL-backed genre selections
+  setupProxy.js     Development /api proxy to localhost:3001
+server/
+  index.cjs         Environment setup and server startup
+  app.cjs           Browse endpoints, TMDB proxy, and production static files
+  auth.cjs          TMDB sign-in, sign-out, and account endpoints
+  session-store.cjs  Encrypted file or Redis session storage
+scripts/
+  dev.cjs           Combined development launcher
+render.yaml         Render deployment Blueprint
+```
+
+### API overview
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /healthz` | Health response: `{"status":"ok"}`. |
+| `GET /api/movies` | Canadian movie discovery; accepts `page` and `with_genres`. |
+| `GET /api/tv` | Canadian TV discovery; accepts `page` and `with_genres`. |
+| `GET /api/search` | Movie/TV search API; accepts `query` and `page`. Currently unused by the routed UI. |
+| `GET /api/tmdb/*` | Allowlisted genres, daily trending titles, title details, videos, and watch providers. |
+| `/api/auth/*` | Current account, sign-in, callback, and sign-out. |
+| `/api/account/*` | Watchlists, favourites, and saved-title states. |
+
+Account writes require authentication and an `X-CSRF-Token` obtained from `GET /api/auth/me`; authentication POST requests also require the token. The frontend handles these requests.
+
+The API limits each IP to 120 requests per minute per server process. TMDB requests time out after 10 seconds. Successful public TMDB responses advertise a 60-second cache lifetime; account and authentication responses use `no-store`. The proxy is restricted to supported endpoints rather than exposing arbitrary TMDB requests.
+
+## Production deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the Render and Upstash setup. The checked-in Blueprint builds and serves the frontend and API from a single Express service.
+
+Build command:
+
+```sh
+npm ci --include=dev
+npm run build
+```
+
+Start command, with production environment variables configured:
+
+```sh
+NODE_ENV=production npm run server
+```
+
+Production requires `TMDB_READ_ACCESS_TOKEN`, `SESSION_SECRET`, a `rediss://` connection, and an HTTPS public origin through `APP_ORIGIN` or `RENDER_EXTERNAL_URL`. Express serves `build/`, handles frontend route refreshes, and exposes `/api` on the same origin.
+
+Use `npm run server` as the production start command. `npm start` launches React's development server. Production never falls back to local file sessions. Configure trusted proxy hops for your hosting topology; multiple API instances also require a shared rate limiter.
+
+## Troubleshooting
+
+### Ports already in use
+
+Stop any existing React or API development terminals before running `npm run dev`. On macOS, identify listeners with:
+
+```sh
+lsof -nP -iTCP:3000 -iTCP:3001 -sTCP:LISTEN
+```
+
+Confirm a process belongs to this app before stopping it. The launcher reports port conflicts without terminating existing processes.
+
+### API startup fails
+
+Check that the TMDB token is set and `SESSION_SECRET` has at least 32 characters. If Redis is configured, check its availability and ensure the connection uses `rediss://`. Production also requires an HTTPS origin and an existing frontend build.
+
+### Frontend loads but API requests fail
+
+Ensure Express is running on port 3001. The development proxy is configured in `src/setupProxy.js` and `package.json`; restart the frontend after changing proxy settings. The proxy is not part of the production build.
+
+### TMDB sign-in fails
+
+Check that `APP_ORIGIN` matches the origin used in the browser, including its port. Use `http://localhost:3000` consistently in development. Production requires HTTPS, secure cookies, and correct trusted-proxy configuration. Keep the session secret stable and restart after changing environment settings.
+
+### Fewer browse results or unavailable trailers
+
+Canadian provider filtering can remove titles from upstream result pages. Provider availability comes from TMDB/JustWatch and can differ from a service's current catalogue. Trailers appear only when TMDB supplies a supported YouTube trailer.
+
+## Data attribution
+
+Movie and TV metadata and images come from TMDB. Canadian watch-provider data comes from JustWatch through TMDB. Trailer playback uses YouTube embeds.

@@ -48,20 +48,19 @@ const call = (store, method, ...args) =>
       ],
       { stdio: "ignore" },
     );
+    // Disposable test certificates must be readable by the container Redis user.
+    fs.chmodSync(dir, 0o755);
     fs.chmodSync(path.join(dir, "key.pem"), 0o644);
     const probe = require("node:net").createServer();
     await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
     const fixedPort = probe.address().port;
     await new Promise((resolve) => probe.close(resolve));
     docker(
-      "run",
-      "-d",
+      "create",
       "--name",
       name,
       "-p",
       `127.0.0.1:${fixedPort}:6379`,
-      "-v",
-      `${dir}:/certs:ro`,
       "redis:7-alpine",
       "redis-server",
       "--port",
@@ -81,10 +80,12 @@ const call = (store, method, ...args) =>
       "--appendonly",
       "no",
     );
-    const port = docker("port", name, "6379/tcp").split(":").pop();
+    // Copy fixtures rather than depending on host bind-mount ownership or paths.
+    docker("cp", dir, `${name}:/certs`);
+    docker("start", name);
     session = await createSessionStore({
       secret: "fixture-secret",
-      redisUrl: `rediss://127.0.0.1:${port}`,
+      redisUrl: `rediss://127.0.0.1:${fixedPort}`,
       redisCa: fs.readFileSync(path.join(dir, "cert.pem")),
       production: true,
     });
@@ -123,6 +124,11 @@ const call = (store, method, ...args) =>
     console.log(
       "Redis TLS encryption, outage, reconnect, and session deletion passed.",
     );
+  } catch (error) {
+    try {
+      console.error(docker("logs", name));
+    } catch {}
+    throw error;
   } finally {
     if (session) await session.close();
     try {

@@ -302,6 +302,12 @@ test("health reflects Redis readiness and hashed static assets are compressed an
     );
     assert.equal(asset.headers.get("content-encoding"), "gzip");
     assert.ok(!asset.headers.get("x-powered-by"));
+    assert.equal(
+      asset.headers.get("referrer-policy"),
+      "strict-origin-when-cross-origin",
+    );
+    const auth = await fetch(base + "/api/auth/me");
+    assert.equal(auth.headers.get("referrer-policy"), "no-referrer");
     assert.match(
       (await fetch(base + "/")).headers.get("cache-control"),
       /max-age=0/,

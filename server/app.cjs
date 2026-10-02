@@ -21,6 +21,7 @@ function createApp({ token, fetchImpl = fetch, staticDir, ...authOptions }) {
   });
   app.use(
     require("helmet")({
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       contentSecurityPolicy: {
         directives: {
           "img-src": ["'self'", "data:", "https://image.tmdb.org"],

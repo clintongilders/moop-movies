@@ -55,6 +55,7 @@ export default function TrailerButton({ mediaType, id, title, videos }) {
                 <div className="ratio ratio-16x9">
                   <iframe
                     title={`${title} trailer`}
+                    referrerPolicy="strict-origin-when-cross-origin"
                     src={`https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1`}
                     allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                     allowFullScreen

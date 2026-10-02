@@ -30,6 +30,10 @@ test.each(["movie", "tv"])(
     fireEvent.click(screen.getByRole("button", { name: /Play trailer/ }));
     const frame = await screen.findByTitle("Example trailer");
     expect(frame).toHaveAttribute(
+      "referrerpolicy",
+      "strict-origin-when-cross-origin",
+    );
+    expect(frame).toHaveAttribute(
       "src",
       "https://www.youtube-nocookie.com/embed/ABCDEFGHIJK?autoplay=1",
     );

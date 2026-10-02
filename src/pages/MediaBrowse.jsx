@@ -12,9 +12,9 @@ const MediaBrowse = ({ mediaType }) => {
 
   return (
     <>
-      <div className="container">
-        <div className="row py-5 my-5">
-          <div className="col-12 text-center mt-2 mb-4 fs-1 fw-bold text-decoration-underline">
+      <div className="container media-browse">
+        <div className="row py-5 my-5 media-browse-grid">
+          <div className="col-12 text-center mt-2 mb-4 fs-1 fw-bold text-decoration-underline media-browse-heading">
             {mediaType === "movie" ? "Movies" : "TV"}
           </div>
           <Genre type={mediaType} value={value} setValue={setValue} />

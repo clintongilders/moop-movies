@@ -46,6 +46,7 @@ export default function TrailerButton({ mediaType, id, title }) {
           {show && <div className="ratio ratio-16x9">
             <iframe title={`${title} trailer`} src={`https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1`} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
           </div>}
+          <a className="link-light d-inline-block mt-3" href={`https://www.youtube.com/watch?v=${trailer.key}`} target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
         </> : <p>No trailer is available for this title.</p>}
       </Modal.Body>
     </Modal>

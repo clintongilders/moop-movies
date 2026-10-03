@@ -72,3 +72,32 @@ test("retries the same page after failure and resets when filters change", async
     ),
   );
 });
+
+test("stops auto-loading after three empty pages in a row", async () => {
+  const original = window.IntersectionObserver;
+  window.IntersectionObserver = class {
+    constructor(callback) {
+      this.callback = callback;
+    }
+    observe() {
+      this.callback([{ isIntersecting: true }]);
+    }
+    disconnect() {}
+  };
+  global.fetch = vi.fn().mockResolvedValue(page([], 500));
+  try {
+    render(
+      <MemoryRouter>
+        <InfiniteMediaList endpoint="/api/movies" mediaType="movie" />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+    await screen.findByRole("button", { name: "Load more" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4));
+  } finally {
+    window.IntersectionObserver = original;
+  }
+});

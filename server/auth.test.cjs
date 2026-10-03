@@ -18,9 +18,16 @@ test("TMDB auth binds approval to browser, rotates session, protects writes and 
             ? { id: 7, username: "tester", name: "Test" }
             : path.endsWith("/account_states")
               ? { watchlist: true, favorite: false }
-              : options.method === "GET"
-                ? { results: [], total_pages: 0 }
-                : { success: true };
+              : path.endsWith("/watchlist/movies")
+                ? {
+                    results: [
+                      { id: Number(new URL(url).searchParams.get("page")) },
+                    ],
+                    total_pages: 7,
+                  }
+                : options.method === "GET"
+                  ? { results: [], total_pages: 0 }
+                  : { success: true };
       return { ok: true, json: async () => data };
     },
   });
@@ -120,6 +127,8 @@ test("TMDB auth binds approval to browser, rotates session, protects writes and 
       (await request("/api/account/favorite/movie?page=1")).status,
       200,
     );
+    response = await request("/api/account/watchlist-ids/movie");
+    assert.deepEqual(await response.json(), { ids: [1, 2, 3, 4, 5, 6, 7] });
     assert.equal(
       (
         await request("/api/auth/logout", {

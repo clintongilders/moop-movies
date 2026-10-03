@@ -1,7 +1,7 @@
 import React, { useId, useState } from "react";
 
 import useApiQuery from "./useApiQuery";
-const Genre = ({ genre = [], setPage, type, value, setValue }) => {
+const Genre = ({ type, value, setValue }) => {
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
   const query = useApiQuery(
@@ -11,7 +11,7 @@ const Genre = ({ genre = [], setPage, type, value, setValue }) => {
   );
   const loading = query.isPending;
   const error = query.error?.message;
-  const genres = query.data?.genres || genre;
+  const genres = query.data?.genres || [];
 
   const toggleGenre = (selected) => {
     setValue((previous) =>
@@ -19,11 +19,9 @@ const Genre = ({ genre = [], setPage, type, value, setValue }) => {
         ? previous.filter((item) => item.id !== selected.id)
         : [...previous, selected],
     );
-    setPage?.(1);
   };
   const clearGenres = () => {
     setValue([]);
-    setPage?.(1);
   };
 
   return (

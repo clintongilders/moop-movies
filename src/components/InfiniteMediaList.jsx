@@ -34,8 +34,20 @@ export default function InfiniteMediaList({
     if (query.error?.status === 401) refresh?.();
   }, [query.error, refresh]);
   const { hasNextPage, isFetching, isError, fetchNextPage } = query;
+  // The server drops unavailable titles, so pages can arrive empty. Stop
+  // auto-loading after a few in a row and leave the "Load more" button.
+  const pages = query.data?.pages || [];
+  const emptyRun =
+    pages.length - 1 - pages.findLastIndex((page) => page.results?.length > 0);
+  const paused = emptyRun >= 3;
   useEffect(() => {
-    if (isFetching || isError || !hasNextPage || !window.IntersectionObserver)
+    if (
+      isFetching ||
+      isError ||
+      paused ||
+      !hasNextPage ||
+      !window.IntersectionObserver
+    )
       return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -45,10 +57,10 @@ export default function InfiniteMediaList({
     );
     if (sentinel.current) observer.observe(sentinel.current);
     return () => observer.disconnect();
-  }, [isFetching, isError, hasNextPage, fetchNextPage]);
+  }, [isFetching, isError, paused, hasNextPage, fetchNextPage, pages.length]);
   const items = [
     ...new Map(
-      (query.data?.pages || [])
+      pages
         .flatMap((page) => page.results || [])
         .map((item) => [`${item.media_type || mediaType}-${item.id}`, item]),
     ).values(),

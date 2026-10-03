@@ -43,7 +43,14 @@ function createApp({ token, fetchImpl = fetch, staticDir, ...authOptions }) {
     });
   });
   if (authOptions.trustProxy) app.set("trust proxy", authOptions.trustProxy);
-  app.use("/api", rateLimit({ windowMs: 60000, limit: 120 }));
+  app.use(
+    "/api",
+    rateLimit({
+      windowMs: 60000,
+      limit: 120,
+      message: { error: "Too many requests. Please try again in a minute." },
+    }),
+  );
   require("./auth.cjs").installAuth(app, { token, fetchImpl, ...authOptions });
 
   async function proxy(req, res, { path, kind = "resource" }) {

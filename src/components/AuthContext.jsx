@@ -50,7 +50,8 @@ export function AuthProvider({ children }) {
         },
         body: JSON.stringify(body),
       });
-      const data = await response.json();
+      // Proxies and gateways can answer errors without a JSON body.
+      const data = await response.json().catch(() => ({}));
       if (response.status === 401) {
         setAuth({ account: null, csrf: auth.csrf });
       }

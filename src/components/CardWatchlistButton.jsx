@@ -56,6 +56,10 @@ export default function CardWatchlistButton({ item, mediaType }) {
       client.setQueryData(key, (previous) => ({
         ids: [...new Set([...(previous?.ids || []), item.id])],
       }));
+      client.setQueryData(
+        ["api", `/api/account/states/${mediaType}/${item.id}`, account.id],
+        (previous) => previous && { ...previous, watchlist: true },
+      );
       client.invalidateQueries({
         queryKey: ["media", `/api/account/watchlist/${mediaType}`],
       });

@@ -263,19 +263,28 @@ function installAuth(
       const { type } = req.params;
       if (!["movie", "tv"].includes(type))
         return res.status(400).json({ error: "Invalid media type" });
-      const ids = [];
-      let page = 1;
-      let pages = 1;
-      do {
-        const data = await tmdb(
+      const load = (page) =>
+        tmdb(
           `account/${req.session.account.id}/watchlist/${type === "movie" ? "movies" : "tv"}`,
           { sid: req.session.tmdbSession, params: { page, language: "en-US" } },
         );
-        ids.push(...(data.results || []).map((item) => item.id));
-        pages = Math.min(Number(data.total_pages) || 1, 500);
-        page++;
-      } while (page <= pages);
-      res.json({ ids });
+      const first = await load(1);
+      const pages = Math.min(Number(first.total_pages) || 1, 500);
+      const rest = [];
+      // Small parallel batches keep long watchlists fast without flooding TMDB.
+      for (let page = 2; page <= pages; page += 5)
+        rest.push(
+          ...(await Promise.all(
+            Array.from({ length: Math.min(5, pages - page + 1) }, (_, index) =>
+              load(page + index),
+            ),
+          )),
+        );
+      res.json({
+        ids: [first, ...rest].flatMap((data) =>
+          (data.results || []).map((item) => item.id),
+        ),
+      });
     }),
   );
   app.get(
